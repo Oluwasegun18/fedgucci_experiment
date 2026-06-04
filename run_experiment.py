@@ -17,7 +17,7 @@ def parse_args():
     p.add_argument("--num_clients", type=int, default=50)
     p.add_argument("--dirichlet_alpha", type=float, default=0.01)
     p.add_argument("--rounds", type=int, default=100)
-    p.add_argument("--local_epochs", type=int, default=2)
+    p.add_argument("--local_epochs", type=int, default=3)
     p.add_argument("--participation_rate", type=float, default=1.0)
     p.add_argument("--batch_size", type=int, default=64)
     p.add_argument("--lr", type=float, default=0.01)
@@ -26,7 +26,7 @@ def parse_args():
     p.add_argument("--top_q", type=int, default=5)
     p.add_argument("--ema_tau", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--device", type=str, default="cpu")
+    p.add_argument("--device", type=str, default="gpu")
     p.add_argument("--methods", type=str, default="fedavg,fedprox,fedsam,fedgucci,fedgucci_adaptive_beta,fedgucci_best_anchor,fedgucci_topq_anchor,fedgucci_ema_anchor,fedgucci_topq_ema,fedgucci_hsa") #fedavg,fedprox,fedsam,fedgucci,fedgucci_adaptive_beta,fedgucci_topq_ema,fedgucci_hsa
     p.add_argument("--compute_connectivity_barrier", action="store_true") 
     return p.parse_args()
