@@ -12,6 +12,5 @@ mkdir -p logs
 
 cd /speed-scratch/ol_tal/simulation/local_global/fedgucci_experiment
 
-source /path/to/your/venv/bin/activate
 
 python run_experiment.py
