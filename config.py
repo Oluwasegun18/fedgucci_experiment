@@ -29,7 +29,9 @@ class ExperimentConfig:
     lr: float = 0.01
     momentum: float = 0.9
     weight_decay: float = 1e-4
-    eval_every: int = 1
+    eval_every: int = 5
+    client_val_eval_every: int = 10
+    client_val_num_clients: int = 0  # 0 means all clients when client validation runs.
 
     # Methods to run in a single comparison
     methods: List[str] = None

@@ -21,12 +21,15 @@ def parse_args():
     p.add_argument("--participation_rate", type=float, default=1.0)
     p.add_argument("--batch_size", type=int, default=64)
     p.add_argument("--lr", type=float, default=0.01)
+    p.add_argument("--eval_every", type=int, default=5)
+    p.add_argument("--client_val_eval_every", type=int, default=10)
+    p.add_argument("--client_val_num_clients", type=int, default=0)
     p.add_argument("--beta", type=float, default=0.1)
     p.add_argument("--num_anchors", type=int, default=4)
     p.add_argument("--top_q", type=int, default=5)
     p.add_argument("--ema_tau", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--device", type=str, default="gpu")
+    p.add_argument("--device", type=str, default="cuda")
     p.add_argument("--methods", type=str, default="fedavg,fedprox,fedsam,fedgucci,fedgucci_adaptive_beta,fedgucci_best_anchor,fedgucci_topq_anchor,fedgucci_ema_anchor,fedgucci_topq_ema,fedgucci_hsa") #fedavg,fedprox,fedsam,fedgucci,fedgucci_adaptive_beta,fedgucci_topq_ema,fedgucci_hsa
     p.add_argument("--compute_connectivity_barrier", action="store_true") 
     return p.parse_args()
@@ -40,6 +43,13 @@ def main():
             cfg.methods = [m.strip() for m in v.split(",") if m.strip()]
         else:
             setattr(cfg, k, v)
+
+    if cfg.eval_every <= 0:
+        raise ValueError("--eval_every must be positive")
+    if cfg.client_val_eval_every <= 0:
+        raise ValueError("--client_val_eval_every must be positive")
+    if cfg.client_val_num_clients < 0:
+        raise ValueError("--client_val_num_clients must be >= 0")
 
     run_dir = os.path.join(
         cfg.output_dir,

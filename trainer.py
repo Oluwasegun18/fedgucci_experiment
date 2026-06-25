@@ -43,6 +43,19 @@ def evaluate_local_client_scores(model, client_states, train_dataset, val_indice
     return scores
 
 
+def select_client_val_indices(val_indices, config):
+    max_clients = getattr(config, "client_val_num_clients", 0)
+    if max_clients <= 0:
+        return val_indices
+
+    eligible = [cid for cid in sorted(val_indices.keys()) if len(val_indices[cid]) > 0]
+    if max_clients >= len(eligible):
+        return {cid: val_indices[cid] for cid in eligible}
+
+    sampled = sorted(random.sample(eligible, max_clients))
+    return {cid: val_indices[cid] for cid in sampled}
+
+
 def run_single_method(method: str, config, fed_data, run_dir: str):
     train_set, test_set, train_indices, val_indices, class_counts, hetero_scores = fed_data
     device = torch.device(config.device if torch.cuda.is_available() else "cpu")
@@ -100,14 +113,31 @@ def run_single_method(method: str, config, fed_data, run_dir: str):
 
         if rnd % config.eval_every == 0 or rnd == 1 or rnd == config.rounds:
             test_res = evaluate_model(model, global_state, test_set, device, batch_size=256)
-            client_stats = evaluate_client_val_stats(
-                model, global_state, train_set, val_indices, device, batch_size=256
+            should_eval_client_val = (
+                rnd == 1
+                or rnd == config.rounds
+                or rnd % config.client_val_eval_every == 0
             )
+            if should_eval_client_val:
+                eval_val_indices = select_client_val_indices(val_indices, config)
+                client_stats = evaluate_client_val_stats(
+                    model, global_state, train_set, eval_val_indices, device, batch_size=256
+                )
+                client_val_clients = sum(1 for idxs in eval_val_indices.values() if len(idxs) > 0)
+            else:
+                client_stats = {
+                    "client_val_acc_mean": np.nan,
+                    "client_val_acc_worst10": np.nan,
+                    "client_val_acc_std": np.nan,
+                    "client_val_acc_gap": np.nan,
+                }
+                client_val_clients = 0
             row = {
                 "method": method,
                 "round": rnd,
                 "test_loss": test_res["loss"],
                 "test_acc": test_res["acc"],
+                "client_val_clients": client_val_clients,
                 **client_stats,
             }
             print('Method: ', method, ' | Round: ', rnd, ' | Test Loss: ', test_res["loss"], ' | Test Accuracy: ', test_res["acc"])
@@ -117,10 +147,20 @@ def run_single_method(method: str, config, fed_data, run_dir: str):
                     model, local_states[:k], test_set, device, batch_size=256
                 )
             rows.append(row)
+            client_mean = (
+                f"{row['client_val_acc_mean']:.4f}"
+                if pd.notna(row["client_val_acc_mean"])
+                else "skipped"
+            )
+            worst10 = (
+                f"{row['client_val_acc_worst10']:.4f}"
+                if pd.notna(row["client_val_acc_worst10"])
+                else "skipped"
+            )
             print(
                 f"[{method}] round {rnd:03d}/{config.rounds} | "
-                f"test_acc={row['test_acc']:.4f} | client_mean={row['client_val_acc_mean']:.4f} | "
-                f"worst10={row['client_val_acc_worst10']:.4f}"
+                f"test_acc={row['test_acc']:.4f} | client_mean={client_mean} | "
+                f"worst10={worst10}"
             )
 
     df = pd.DataFrame(rows)
