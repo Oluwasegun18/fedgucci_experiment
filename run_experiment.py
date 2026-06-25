@@ -16,13 +16,14 @@ def parse_args():
     p.add_argument("--experiment_name", type=str, default="fedgucci_compare")
     p.add_argument("--num_clients", type=int, default=50)
     p.add_argument("--dirichlet_alpha", type=float, default=0.01)
+    p.add_argument("--min_client_size", type=int, default=20)
     p.add_argument("--rounds", type=int, default=100)
     p.add_argument("--local_epochs", type=int, default=3)
     p.add_argument("--participation_rate", type=float, default=1.0)
     p.add_argument("--batch_size", type=int, default=64)
     p.add_argument("--lr", type=float, default=0.01)
-    p.add_argument("--eval_every", type=int, default=5)
-    p.add_argument("--client_val_eval_every", type=int, default=10)
+    p.add_argument("--eval_every", type=int, default=1)
+    p.add_argument("--client_val_eval_every", type=int, default=1)
     p.add_argument("--client_val_num_clients", type=int, default=0)
     p.add_argument("--beta", type=float, default=0.1)
     p.add_argument("--num_anchors", type=int, default=4)
@@ -44,6 +45,8 @@ def main():
         else:
             setattr(cfg, k, v)
 
+    if cfg.min_client_size < 0:
+        raise ValueError("--min_client_size must be >= 0")
     if cfg.eval_every <= 0:
         raise ValueError("--eval_every must be positive")
     if cfg.client_val_eval_every <= 0:

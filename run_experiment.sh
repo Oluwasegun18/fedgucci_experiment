@@ -52,5 +52,5 @@ python run_experiment.py \
   --experiment_name "fedgucci_compare_${METHOD}" \
   --methods "${METHOD}" \
   --eval_every 1 \
-  --client_val_eval_every 10 \
-  --client_val_num_clients 5
+  --client_val_eval_every 1 \
+  --client_val_num_clients 0
