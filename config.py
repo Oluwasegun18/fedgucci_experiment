@@ -11,6 +11,7 @@ class ExperimentConfig:
     seed: int = 42
     output_dir: str = "./results"
     device: str = "cuda"
+    run_tag: str = ""
 
     # Data
     dataset: str = "cifar10"  # cifar10 or fashionmnist

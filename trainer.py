@@ -43,6 +43,11 @@ def evaluate_local_client_scores(model, client_states, train_dataset, val_indice
     return scores
 
 
+def output_name_for(method: str, config):
+    run_tag = getattr(config, "run_tag", "")
+    return f"{method}_{run_tag}" if run_tag else method
+
+
 def select_client_val_indices(val_indices, config):
     max_clients = getattr(config, "client_val_num_clients", 0)
     if max_clients <= 0:
@@ -58,7 +63,14 @@ def select_client_val_indices(val_indices, config):
 
 def run_single_method(method: str, config, fed_data, run_dir: str):
     train_set, test_set, train_indices, val_indices, class_counts, hetero_scores = fed_data
-    device = torch.device(config.device if torch.cuda.is_available() else "cpu")
+    output_name = output_name_for(method, config)
+    requested_device = str(config.device).lower()
+    if requested_device.startswith("cuda") and not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA was requested with --device cuda, but torch.cuda.is_available() is false. "
+            "Check the Slurm node GPU driver and the installed PyTorch CUDA build."
+        )
+    device = torch.device(config.device if requested_device.startswith("cuda") else "cpu")
     seed_everything(config.seed)
 
     model = build_model(config.dataset, config.num_classes)
@@ -133,7 +145,13 @@ def run_single_method(method: str, config, fed_data, run_dir: str):
                 }
                 client_val_clients = 0
             row = {
-                "method": method,
+                "method": output_name,
+                "base_method": method,
+                "run_tag": getattr(config, "run_tag", ""),
+                "beta": config.beta,
+                "num_anchors": config.num_anchors,
+                "top_q": config.top_q,
+                "ema_tau": config.ema_tau,
                 "round": rnd,
                 "test_loss": test_res["loss"],
                 "test_acc": test_res["acc"],
@@ -158,19 +176,19 @@ def run_single_method(method: str, config, fed_data, run_dir: str):
                 else "skipped"
             )
             print(
-                f"[{method}] round {rnd:03d}/{config.rounds} | "
+                f"[{output_name}] round {rnd:03d}/{config.rounds} | "
                 f"test_acc={row['test_acc']:.4f} | client_mean={client_mean} | "
                 f"worst10={worst10}"
             )
 
     df = pd.DataFrame(rows)
     os.makedirs(run_dir, exist_ok=True)
-    df.to_csv(os.path.join(run_dir, f"metrics_{method}.csv"), index=False)
-    torch.save(global_state, os.path.join(run_dir, f"final_model_{method}.pt"))
+    df.to_csv(os.path.join(run_dir, f"metrics_{output_name}.csv"), index=False)
+    torch.save(global_state, os.path.join(run_dir, f"final_model_{output_name}.pt"))
     return df
 
 
-def run_all_methods(config, fed_data, run_dir: str):
+def run_all_methods(config, fed_data, run_dir: str, write_combined: bool = True):
     all_dfs = []
     for method in config.methods:
         print("\n" + "=" * 90)
@@ -179,5 +197,6 @@ def run_all_methods(config, fed_data, run_dir: str):
         df = run_single_method(method, config, fed_data, run_dir)
         all_dfs.append(df)
     combined = pd.concat(all_dfs, ignore_index=True)
-    combined.to_csv(os.path.join(run_dir, "metrics_all_methods.csv"), index=False)
+    if write_combined:
+        combined.to_csv(os.path.join(run_dir, "metrics_all_methods.csv"), index=False)
     return combined
